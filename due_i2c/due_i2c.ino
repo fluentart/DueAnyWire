@@ -8,7 +8,7 @@
 #define GYRO_CTRL_REG5 0x24
 #define GYRO_RATE_HZ 760;
 
-double gyro[3] = {0,0,0};   
+int16_t gyro[3] = {0,0,0};   
 long prevtime = micros();
 long nowtime, deltatime;
 double deltatimeseconds = 0.001;
@@ -19,32 +19,34 @@ int i2cspeed = 10;
 
 
 void setup() {
-   Serial.begin(9600);
+   Serial.begin(115200);
    delay(1000);
    Serial.println("booting");
 
    byte whoami = i2cGet(GYRO_ADDRESS, GYRO_WHOAMI_REG, 9,8);  //GETS THE ADDRESS FROM THE GYRO //ACCORDING TO THE DATASHEET 215.
    Serial.println(whoami);  //THIS IS TO TEST i2c is working..
-   initializeGyro(9,8);     //Sets speed and feed and enables the XYZ
+   
+   while (gyroInitialized != true) {
+    initializeGyro(9,8);     //Sets speed and feed and enables the XYZ
+   }
 }
 
 
 
 void loop() {
   
-  delay(20);
  // getCtrl();
  // gyroStatus();
   readGyroRaw(9,8);
 
   Serial.print("{ \"g1x\" :\"");
-  Serial.print(gyro[0]); 
+  Serial.print((int)gyro[0]); 
   Serial.print("\", \"g1y\" :\"");
-  Serial.print(gyro[1]); 
+  Serial.print((int)gyro[1]); 
   Serial.print("\", \"g1z\" :\"");
-  Serial.print(gyro[2]); 
+  Serial.print((int)gyro[2]); 
   Serial.println("\"}");
-  delay(20);
+  delay(10);
 }
 
 
@@ -61,13 +63,26 @@ void initializeGyro(int sda, int scl) {
     Serial.println(i2cid);
     if (i2cid == GYRO_IDENTITY)
     {
+
+      //using node.js
+      // parseInt("1010000", 2).toString(16);
+            
       //success
       beginTransmission(GYRO_ADDRESS,sda, scl);
       i2c_write(GYRO_CTRL_REG1,sda, scl);   
-      i2c_write(15,sda, scl);
-      //i2c_write(0xFF);       //page 31/32 datasheet. 760hz //DATARATE
+      
+      // 0x6F = 0b01101111
+      // DR = 01 (200 Hz ODR); BW = 10 (50 Hz bandwidth); PD = 1 (normal mode); Zen = Yen = Xen = 1 (all axes enabled)      
+      i2c_write(0x6F,sda, scl);    
       
       endTransmission(sda, scl);    
+
+        beginTransmission(GYRO_ADDRESS,sda, scl);
+      i2c_write(GYRO_CTRL_REG4,sda, scl);       
+      
+      i2c_write(0xa0,sda, scl);        // FS = 00 (+/- 250 dps full scale)
+      endTransmission(sda, scl);  
+      
       gyroInitialized = true;  
     } else { Serial.println("Gyro error cannot connect"); }
   }  
@@ -83,13 +98,13 @@ void readGyroRaw(int sda, int scl) {
     zlg = getReading(0x2C, sda, scl);
     zhg = getReading(0x2D, sda, scl);
     
-    int gyroraw[3];
+    int16_t gyroraw[3];
     gyroraw[0] = (int16_t)(xhg << 8 | xlg);
     gyroraw[1] = (int16_t)(yhg << 8 | ylg);
     gyroraw[2] = (int16_t)(zhg << 8 | zlg);
-    gyro[0] = (double) gyroraw[0];
-    gyro[1] = (double) gyroraw[1];
-    gyro[2] = (double) gyroraw[2];
+    gyro[0] = (int) gyroraw[0];
+    gyro[1] = (int) gyroraw[1];
+    gyro[2] = (int) gyroraw[2];
 }
 
 
