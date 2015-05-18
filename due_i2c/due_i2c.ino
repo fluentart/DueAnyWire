@@ -56,7 +56,6 @@ void initializeGyro(int sda, int scl) {
     beginTransmission(GYRO_ADDRESS,sda, scl);
     i2c_write(GYRO_WHOAMI_REG,sda, scl);    
     endTransmission(sda, scl);  
-    
     requestFrom(GYRO_ADDRESS,sda, scl);  
     byte i2cid = i2c_read(sda, scl);
     endTransmission(sda, scl); 
@@ -64,24 +63,20 @@ void initializeGyro(int sda, int scl) {
     if (i2cid == GYRO_IDENTITY)
     {
 
-      //using node.js
+      //using node.js to convert binary to hex
       // parseInt("1010000", 2).toString(16);
-            
-      //success
+      
+      // SET SENSITIVITY
+      beginTransmission(GYRO_ADDRESS,sda, scl);
+      i2c_write(GYRO_CTRL_REG4,sda, scl);    
+      i2c_write(0xa0,sda, scl);       
+      endTransmission(sda, scl); 
+      
+      // ENABLE
       beginTransmission(GYRO_ADDRESS,sda, scl);
       i2c_write(GYRO_CTRL_REG1,sda, scl);   
-      
-      // 0x6F = 0b01101111
-      // DR = 01 (200 Hz ODR); BW = 10 (50 Hz bandwidth); PD = 1 (normal mode); Zen = Yen = Xen = 1 (all axes enabled)      
       i2c_write(0x6F,sda, scl);    
-      
       endTransmission(sda, scl);    
-
-        beginTransmission(GYRO_ADDRESS,sda, scl);
-      i2c_write(GYRO_CTRL_REG4,sda, scl);       
-      
-      i2c_write(0xa0,sda, scl);        // FS = 00 (+/- 250 dps full scale)
-      endTransmission(sda, scl);  
       
       gyroInitialized = true;  
     } else { Serial.println("Gyro error cannot connect"); }
